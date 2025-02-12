@@ -60,7 +60,6 @@ for (id in 1:26 )
 dataCausal=data.frame(resCCA)
 dataCausal <- dataCausal %>% rename(Lamda_motor = MR1) # Lamda_motor is MR1
 
-library(geepack)
 library(ipw)
 library(EValue)
 # Compute inverse probability weights for MSM (Methods: "Marginal Structural Models")
