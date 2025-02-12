@@ -4,7 +4,7 @@ library(readr)
 library(dplyr)
 
 rm(list = ls(all.names = TRUE)) # Clear memory
-load("D:/User1 OneDrive/OneDrive - CCLAB/Maria/Mediatio NeuroEpo/NeuroEPOMDS-main/Data/tidyEPOdata.Rdata") # Load dataset
+load("tidyEPOdata.Rdata") # Load dataset
 
 # Rename variables while keeping original read names intact
 colnames(subTB)[7] = "side" # Side of symptom onset (Methods: "Confounder variables")
@@ -79,18 +79,12 @@ msm=nlme::lme(Lamda_motor~Doseind, data=dataCausal,
 summary(msm)
 s=summary(msm)
 
-# MSM estimation using generalized estimating equations (Methods: "Marginal Structural Models")
-msm <- geeglm(Lamda_motor~Doseind,
-              data = dataCausal , weights =dataCausal$siptw , family = gaussian,
-              id = dataCausal$ID, waves=dataCausal$time, corstr = "ar1")
-summary(msm)
-beta = coef(summary(msm))[,1]
-SE = coef(summary(msm))[, 2]
-lcl = beta - qnorm(0.975) * SE
-ucl = beta + qnorm(0.975) * SE
-
 # Sensitivity analysis for unmeasured confounders (Methods: "Sensitivity Analysis")
-e=evalues.OLS(est = beta[2],
-              se = SE[2],
-              sd = s$sigma,
-              delta =1)
+beta_lme = s$tTable["Doseind", "Value"]
+se_lme = s$tTable["Doseind", "Std.Error"]
+sd_lme = s$sigma
+
+e_lme = evalues.OLS(est = beta_lme, 
+                    se = se_lme, 
+                    sd = sd_lme, 
+                    delta = 1)
