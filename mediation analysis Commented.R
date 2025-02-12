@@ -10,8 +10,8 @@ library(lmerTest)
 rm(list = ls(all.names = TRUE)) # Clear memory
 
 # Load datasets (Methods: "Data Acquisition")
-load("D:/User1 OneDrive/OneDrive - CCLAB/Maria/Mediatio NeuroEpo/NeuroEPOMDS-main/Data/tidyEPOdata.Rdata") # Load EPO dataset
-load("D:/User1 OneDrive/OneDrive - CCLAB/Maria/Mediatio NeuroEpo/NeuroEPOMDS-main/Data/tidyEEGVARETA.Rdata") # Load EEG dataset
+load("tidyEPOdata.Rdata") # Load EPO dataset
+load("tidyEEGVARETA.Rdata") # Load EEG dataset
 
 # Merge cognition, motor, and EEG data (Methods: "Data Processing")
 data <- cognitionTB %>%  
