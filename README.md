@@ -1,4 +1,4 @@
-#NeuroEPO and Parkinson’s Disease: Causal Analysis of Motor Performance
+# NeuroEPO and Parkinson’s Disease: Causal Analysis of Motor Performance
 Overview
 This repository contains MATLAB and R scripts used for the secondary analysis of a randomized controlled trial (RCT) investigating the causal effect of NeuroEPO on motor performance in Parkinson’s Disease (PD). The analysis employs marginal structural models (MSMs) and mediation analysis to explore causal relationships between treatment, motor function, and brain activity as reflected in quantitative EEG (qEEG) measures.
 Contents
