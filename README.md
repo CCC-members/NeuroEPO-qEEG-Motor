@@ -38,11 +38,12 @@ This table maps the variable names used in the **article** and **code**, along w
 
 ## Data & Dependencies  
 ### Data Sources  
-- The study used **UPDRS-III motor assessment data** and **quantitative EEG (qEEG) recordings**.  
+- The study used **UPDRS-III motor assessment data** and **quantitative EEG (qEEG) recordings**.
+  - Tidy format datasets  (tidyEPOdata.Rdata and tidyEEGVARETA.Rdata) 
 - Original datasets are available in **OpenNeuro and OSF repositories**:  
   - [NeuroEPO EEG data (OpenNeuro)](https://openneuro.org/datasets/ds003194/versions/1.0.0)  
   - [Placebo EEG data (OpenNeuro)](https://openneuro.org/datasets/ds003195/versions/1.0.0)  
-  - [Tidy format datasets (OSF)](https://doi.org/10.17605/OSF.IO/M8SJP)  
+
 
 ### Required Software & Libraries  
 #### MATLAB (for .nii file generation & coordinate transformation)  
