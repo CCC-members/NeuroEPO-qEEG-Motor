@@ -13,7 +13,6 @@ This repository contains MATLAB and R scripts used for the secondary analysis of
 - **R scripts:**  
   - `mediation_analysis_Commented.R` – Performs **mediation analysis**, testing whether qEEG mediates the effect of **NeuroEPO** on motor performance.  
   - `msmIPWTcommented.R` – Implements **marginal structural models (MSMs)** to estimate the **causal effect** of NeuroEPO.  
-  - `ReverseCodeMotor.R` – Prepares and **reverse-codes** motor data for **factor analysis**.  
 
 ## Key Findings  
 - NeuroEPO significantly improves **motor performance**, particularly **bradykinesia and rigidity** symptoms.  
@@ -62,7 +61,6 @@ This table maps the variable names used in the **article** and **code**, along w
 
 ## Usage Instructions  
 1. **Preprocess Data:**  
-   - Use `ReverseCodeMotor.R` to prepare motor data.  
    - Ensure **.Rdata files** (e.g., `tidyEPOdata.Rdata`) are available in the working directory.  
 
 2. **Run Causal Models:**  
