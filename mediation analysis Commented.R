@@ -10,12 +10,11 @@ library(lmerTest)
 rm(list = ls(all.names = TRUE)) # Clear memory
 
 # Load datasets (Methods: "Data Acquisition")
-load("tidyEPOdata.Rdata") # Load EPO dataset
+load("tidyMOTORdata.Rdata") # Load EPO dataset
 load("tidyEEGVARETA.Rdata") # Load EEG dataset
 
 # Merge cognition, motor, and EEG data (Methods: "Data Processing")
-data <- cognitionTB %>%  
-  inner_join(motorTB, by = c('ID', 'time')) %>%
+data <- motorTB %>%  
   inner_join(eegTB, by = c('ID', 'time'))
 data <- na.omit(data) # Remove missing values
 
@@ -25,7 +24,6 @@ colnames(subTB)[7] = "side"
 # Define matrices for mediation analysis (Methods: "Statistical Analysis")
 Y = as.matrix(subset(data, select = (speech:actionTremorRH))) # Outcome variables
 X = as.matrix(subset(data, select = (EEG.X1:EEG.X158956))) # EEG predictor variables
-Y = as.matrix(subset(data, select = (Initiation:Inhibition_errors))) # Mediation outcome variables
 
 # Canonical correlation analysis (Methods: "Canonical Correlation Analysis")
 cca.out = scca(X, Y, scale = TRUE)
@@ -57,6 +55,7 @@ fit.o = lme4::lmer(model.o.lmer, data = resCCA)
 
 # Perform mediation analysis (Methods: "Mediation Analysis")
 results = mediation::mediate(fit.m, fit.o, treat = 'Dose', mediator = "KqEEG", sims = 1000, na.action = "na.omit")
+summary(results)
 
 # Compute ANOVA for model evaluation
 # anova(fit.m)  # ANOVA for the mediator model
@@ -65,3 +64,18 @@ results = mediation::mediate(fit.m, fit.o, treat = 'Dose', mediator = "KqEEG", s
 # Extract p-values from models
 # coef(summary(fit.m))[ , "Pr(>|t|)"]  # p-values for mediator model
 # coef(summary(fit.o))[ , "Pr(>|t|)"]  # p-values for outcome model
+
+
+# Ensure R.matlab package is installed
+if (!require("R.matlab")) install.packages("R.matlab", dependencies = TRUE)
+library(R.matlab)
+
+
+# Compute the single CCA score vector (First Canonical Component)
+single_cca_score2 = cca.out$WX[1, ] * cca.out$lambda[1]
+
+# Save as a .mat file
+writeMat("single_cca_scores.mat", single_cca_score2 = single_cca_score2)
+
+# Confirm the file is saved
+print("single_cca_scores.mat has been successfully created!")
