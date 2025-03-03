@@ -88,3 +88,38 @@ e_lme = evalues.OLS(est = beta_lme,
                     se = se_lme, 
                     sd = sd_lme, 
                     delta = 1)
+
+library(boot) # Load bootstrapping package
+library(nlme)  # Load the package that contains fixef()
+
+
+# Function to estimate MSM for bootstrapped samples
+msm_bootstrap <- function(data, indices) {
+  data_boot <- data[indices, ]  # Resample data
+  
+  # Compute IPTW weights
+  siptw <- ipwtm(exposure = Doseind, timevar = time,
+                 family = "binomial", link = "logit",
+                 numerator = ~1 + prevX,
+                 denominator = ~prevX + prevY + progression + age + severity + handness + side,
+                 id = ID, type = "all", data = data_boot, corstr="AR1")
+  
+  data_boot$siptw <- siptw$ipw.weights
+  
+  # MSM estimation using linear mixed-effects model
+  msm_model <- nlme::lme(Lamda_motor ~ Doseind, data = data_boot, 
+                         weights = ~siptw, random = ~1 | ID)
+  
+  return(fixef(msm_model)["Doseind"]) # Return ATE estimate
+}
+
+# Run bootstrap with 1000 iterations
+set.seed(123)  # For reproducibility
+boot_results <- boot(dataCausal, msm_bootstrap, R = 1000)
+
+# Compute 95% confidence intervals
+boot_ci <- boot.ci(boot_results, type = c("perc", "bca"))
+
+# Print results
+print(boot_results)
+print(boot_ci)
