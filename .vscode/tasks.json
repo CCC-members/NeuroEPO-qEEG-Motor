@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Mediation Analysis",
+			"type": "shell",
+			"command": "Rscript",
+			"args": [
+				"mediation analysis Commented.R"
+			],
+			"group": "run"
+		},
+		{
+			"label": "Run Mediation Analysis",
+			"type": "shell",
+			"command": "C:\\Program Files\\R\\R-4.5.2\\bin\\Rscript.exe",
+			"args": [
+				"mediation analysis Commented.R"
+			],
+			"group": "run"
+		}
+	]
+}

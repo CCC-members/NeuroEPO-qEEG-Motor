@@ -1,0 +1,7 @@
+export(
+"whiteningMatrix", "whiten", "whiteningCrossCov", "whiteningLoadings", "explainedVariation", "cca", "scca", "corplot", "loadplot", "simOrtho"
+)
+import("corpcor")
+import("stats")
+
+importFrom("graphics", "box", "image", "layout", "mtext", "par")

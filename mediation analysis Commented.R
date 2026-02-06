@@ -1,5 +1,15 @@
 # Author: Fuleah A. Razzaq
 # Modified by Carlos Lopez
+.libPaths("d:/OneDrive/Downloads/NeuroEpoGitRepo/NeuroEPO-qEEG-Motor/Rlibs")
+# Load necessary libraries
+if (!require("tidyverse")) install.packages("tidyverse", repos = "https://cran.rstudio.com/")
+if (!require("readr")) install.packages("readr", repos = "https://cran.rstudio.com/")
+if (!require("dplyr")) install.packages("dplyr", repos = "https://cran.rstudio.com/")
+if (!require("whitening")) install.packages("whitening", repos = "https://cran.rstudio.com/")
+if (!require("mediation")) install.packages("mediation", repos = "https://cran.rstudio.com/")
+if (!require("lmerTest")) install.packages("lmerTest", repos = "https://cran.rstudio.com/")
+if (!require("lme4")) install.packages("lme4", repos = "https://cran.rstudio.com/")
+
 library(tidyverse) # Load necessary libraries
 library(readr)
 library(dplyr)
@@ -10,7 +20,7 @@ library(lmerTest)
 rm(list = ls(all.names = TRUE)) # Clear memory
 
 # Load datasets (Methods: "Data Acquisition")
-load("tidyMOTORdata.Rdata") # Load EPO dataset
+load("tidyEPOdata.Rdata") # Load EPO dataset
 load("tidyEEGVARETA.Rdata") # Load EEG dataset
 
 # Merge cognition, motor, and EEG data (Methods: "Data Processing")

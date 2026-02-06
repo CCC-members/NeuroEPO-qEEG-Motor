@@ -1,0 +1,12 @@
+corplot                 Plots of Correlations and Loadings
+explainedVariation      Compute Explained Variation from Loadings
+forina1986              Forina 1986 Wine Data - Extended UCI Wine Data
+lusc                    TCGA LUSC Data
+nutrimouse              Nutrimouse Data
+pitprops14              Pitprops Correlation Data for 14 Variables
+scca                    Perform Canonical Correlation Analysis
+simOrtho                Simulate Random Orthogonal Matrix
+whiten                  Whiten Data Matrix
+whitening-package       The whitening Package
+whiteningLoadings       Compute Whitening Loadings
+whiteningMatrix         Compute Whitening Matrix

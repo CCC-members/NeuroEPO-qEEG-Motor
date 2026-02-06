@@ -1,0 +1,63 @@
+CEDdata                 Example Data for the Crossover Encouragement
+                        Design
+amelidiate              Function for combining outputs from mediations
+                        function and calculating quantities of
+                        interest. For use with multiple imputation
+                        procedures.
+boundsdata              Example Data for the Design Functions
+framing                 Brader, Valentino and Suhay (2008) Framing
+                        Experiment Data
+ivmediate               Causal Mediation Analysis with Treatment
+                        Noncompliance
+jobs                    JOBS II data
+mediate                 Causal Mediation Analysis
+mediate.ced             Estimating Average Causal Mediation Effects
+                        under the Crossover Encouragement Design
+mediate.pd              Estimating Average Causal Mediation Effects
+                        under the Parallel Design
+mediate.ped             Computing Bounds on Average Causal Mediation
+                        Effects under the Parallel Encouragement Design
+mediate.sed             Estimating Average Causal Mediation Effects
+                        under the Single Experiment Design
+mediate_tsls            Two-stage Least Squares Estimation of the
+                        Average Causal Mediation Effects
+mediation               mediation: Parametric and non parametric
+                        mediation analysis.
+mediations              Causal Mediation Analysis for Multiple
+                        Outcome/Treatment/Mediator Combinations
+medsens                 Sensitivity Analysis for Causal Mediation
+                        Effects
+multimed                Estimation and Sensitivity Analysis for
+                        Multiple Causal Mechanisms
+plot.ivmediate          Plotting Local Indirect, Direct, and Total
+                        Effects from Mediation Analysis with Treatment
+                        Noncompliance
+plot.mediate            Plotting Indirect, Direct, and Total Effects
+                        from Mediation Analysis
+plot.mediate.mer        Plotting Indirect, Direct, and Total Effects
+                        from Mediation Analysis of Multilevel Models
+plot.mediations         Plotting Indirect, Direct, and Total Effects
+                        from Multiple Mediation Analyses
+plot.medsens            Plotting Results from Sensitivity Analysis for
+                        Causal Mediation Effects
+plot.multimed           Plotting the Results of Causal Mediation
+                        Analysis for Multiple Mechanisms
+school                  School-level data
+student                 Hypothetical student-level data
+summary.ivmediate       Summarizing Output from Mediation Analysis with
+                        Treatment Noncompliance
+summary.mediate         Summarizing Output from Mediation Analysis
+summary.mediate.design
+                        Summarizing Output from Design Based Mediation
+                        Analysis
+summary.mediate.mer     Summarizing Output from Mediation Analysis of
+                        Multilevel Models
+summary.mediations      Summarizing Output from Multiple Mediation
+                        Analyses
+summary.medsens         Summarizing Results from Sensitivity Analysis
+                        for Causal Mediation Effects
+summary.multimed        Summarizing Output from Mediation Analysis with
+                        Multiple Mechanisms
+test.TMint              Significance Test for Treatment-Mediator
+                        Interaction in Causal Mediation Analysis
+test.modmed             Significance Test for Moderated Mediation
