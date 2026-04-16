@@ -232,7 +232,7 @@ plot_obj <- ggplot(
   geom_hline(yintercept = 0, color = "#b0b0b0", linewidth = 0.4, linetype = "dashed") +
   geom_vline(xintercept = 0, color = "#b0b0b0", linewidth = 0.4, linetype = "dashed") +
   geom_point(size = 3, color = "#1f5f8b") +
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "#c44e52", linewidth = 0.9) +
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE, color = "#c44e52", fill = "#c44e52", alpha = 0.15, linewidth = 0.9) +
   annotate(
     "label",
     x = annotation_x,
@@ -246,7 +246,7 @@ plot_obj <- ggplot(
     color = "black"
   ) +
   labs(
-    title = "Participant-Level Change in Latent Motor Score vs UPDRS-III OFF Total",
+    title = "Participant-Level Change in Latent Motor Score\nvs UPDRS-III OFF Total",
     x = "Delta lambda_motor (T4 - T1)",
     y = "Delta UPDRS-III OFF total (T4 - T1)"
   ) +
@@ -254,7 +254,7 @@ plot_obj <- ggplot(
   theme(
     plot.title = element_text(face = "bold"),
     panel.grid.minor = element_blank(),
-    plot.margin = margin(10, 14, 10, 10)
+    plot.margin = margin(16, 14, 10, 10)
   )
 
 group_plot_obj <- ggplot(
@@ -276,8 +276,10 @@ group_plot_obj <- ggplot(
     ),
     method = "lm",
     formula = y ~ x,
-    se = FALSE,
+    se = TRUE,
     color = "#2f2f2f",
+    fill = "#2f2f2f",
+    alpha = 0.15,
     linewidth = 0.9,
     inherit.aes = FALSE
   ) +
@@ -302,7 +304,7 @@ group_plot_obj <- ggplot(
     drop = TRUE
   ) +
   labs(
-    title = "Participant-Level Change in Latent Motor Score vs UPDRS-III OFF Total by Group",
+    title = "Participant-Level Change in Latent Motor Score\nvs UPDRS-III OFF Total by Group",
     x = "Delta lambda_motor (T4 - T1)",
     y = "Delta UPDRS-III OFF total (T4 - T1)",
     color = "Group"
@@ -311,7 +313,7 @@ group_plot_obj <- ggplot(
   theme(
     plot.title = element_text(face = "bold"),
     panel.grid.minor = element_blank(),
-    plot.margin = margin(10, 14, 10, 10)
+    plot.margin = margin(16, 14, 10, 10)
   )
 
 png_path <- file.path(output_dir, "delta_lambda_motor_vs_delta_updrs_T4_T1.png")
