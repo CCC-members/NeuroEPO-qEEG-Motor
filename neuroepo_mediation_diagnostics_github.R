@@ -1,13 +1,52 @@
 ############################################################
-# FULL DIAGNOSTIC + ROBUSTNESS SCRIPT FOR YOUR MEDIATION
-# Uses your actual analysis dataset: resCCA
+# GitHub-targeted copy of the EEG-motor mediation diagnostics.
+# Keeps neuroepo_mediation_diagnostics.R untouched while rebuilding
+# resCCA directly from the tracked Rdata files for manuscript-aligned upload.
 ############################################################
 
-############################
-# 0) LOAD PACKAGES
-############################
+get_script_path <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- "--file="
+  matches <- grep(file_arg, args, value = TRUE)
+
+  if (length(matches) == 0) {
+    stop("Could not determine script path from commandArgs().")
+  }
+
+  normalizePath(sub(file_arg, "", matches[1]), winslash = "/", mustWork = TRUE)
+}
+
+extract_component_loadings <- function(weights, component, expected_length, label) {
+  if (is.null(dim(weights))) {
+    if (length(weights) != expected_length) {
+      stop(sprintf("Unexpected %s loading length: expected %d, got %d", label, expected_length, length(weights)))
+    }
+    return(as.numeric(weights))
+  }
+
+  if (ncol(weights) == expected_length) {
+    return(as.numeric(weights[component, , drop = TRUE]))
+  }
+
+  if (nrow(weights) == expected_length) {
+    return(as.numeric(weights[, component, drop = TRUE]))
+  }
+
+  stop(sprintf(
+    "Could not determine %s loading orientation from dimensions %s",
+    label,
+    paste(dim(weights), collapse = " x ")
+  ))
+}
+
+script_path <- get_script_path()
+root_dir <- dirname(script_path)
+
+.libPaths(c(file.path(root_dir, "Rlibs"), .libPaths()))
 
 req_pkgs <- c(
+  "dplyr",
+  "whitening",
   "lme4",
   "lmerTest",
   "DHARMa",
@@ -20,29 +59,85 @@ req_pkgs <- c(
 )
 
 to_install <- req_pkgs[!req_pkgs %in% installed.packages()[, "Package"]]
-if (length(to_install) > 0) install.packages(to_install)
+if (length(to_install) > 0) install.packages(to_install, repos = "https://cran.rstudio.com/")
 
-library(lme4)
-library(lmerTest)
-library(DHARMa)
-library(performance)
-library(clubSandwich)
-library(influence.ME)
-library(mediation)
-library(splines)
-library(lmtest)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(whitening)
+  library(lme4)
+  library(lmerTest)
+  library(DHARMa)
+  library(performance)
+  library(clubSandwich)
+  library(influence.ME)
+  library(mediation)
+  library(splines)
+  library(lmtest)
+})
 
-############################
-# 1) CHECK THAT VARIABLES EXIST
-############################
+load(file.path(root_dir, "tidyEPOdata.Rdata"))
+load(file.path(root_dir, "tidyEEGVARETA.Rdata"))
 
-# This should show KqEEG and Kmotor among the variable names
-print(names(resCCA))
+if (!"side" %in% names(subTB) && ncol(subTB) >= 7) {
+  colnames(subTB)[7] <- "side"
+}
 
-# Quick check for the most important variables
-vars_needed <- c("KqEEG", "Kmotor", "Dose", "progression", "handness",
-                 "side", "severity", "age", "ID")
-print(vars_needed %in% names(resCCA))
+selected_motor_items <- c(
+  "speech",
+  "facialExp",
+  "rigidNeck",
+  "rigidUpperL",
+  "rigidUpperR",
+  "fingerTapL",
+  "fingerTapR",
+  "handMoveL",
+  "handMoveR",
+  "proneSupineLH",
+  "proneSupineRH",
+  "tapLF",
+  "tapRF",
+  "chair",
+  "posturalTremorLH",
+  "posturalTremorRH",
+  "actionTremorLH",
+  "actionTremorRH"
+)
+
+missing_motor_items <- setdiff(selected_motor_items, names(motorTB))
+if (length(missing_motor_items) > 0) {
+  stop(sprintf("Missing screened motor items in motorTB: %s", paste(missing_motor_items, collapse = ", ")))
+}
+
+analysis_data <- motorTB %>%
+  inner_join(eegTB, by = c("ID", "time")) %>%
+  # In the tracked EEG tables, the post-intervention EEG visit is coded as time = 3.
+  filter(time %in% c(1, 3)) %>%
+  na.omit()
+
+X <- as.matrix(analysis_data %>% dplyr::select(EEG.X1:EEG.X158956))
+Y <- as.matrix(analysis_data %>% dplyr::select(all_of(selected_motor_items)))
+
+cca.out <- whitening::scca(X, Y, scale = TRUE)
+wx1 <- extract_component_loadings(cca.out$WX, component = 1L, expected_length = ncol(X), label = "X")
+wy1 <- extract_component_loadings(cca.out$WY, component = 1L, expected_length = ncol(Y), label = "Y")
+
+resCCA <- data.frame(
+  ID = analysis_data$ID,
+  time = analysis_data$time,
+  KqEEG = as.vector(scale(X, center = TRUE, scale = FALSE) %*% wx1),
+  Kmotor = as.vector(scale(Y, center = TRUE, scale = FALSE) %*% wy1)
+)
+
+resCCA <- subTB %>%
+  inner_join(resCCA, by = "ID")
+resCCA <- subTimeTB %>%
+  inner_join(resCCA, by = c("ID", "time")) %>%
+  filter(complete.cases(ID, time, KqEEG, Kmotor, Dose, progression, handness, side, severity, age)) %>%
+  mutate(
+    ID = factor(ID),
+    side = factor(side),
+    handness = factor(handness)
+  )
 
 ############################
 # 1) CHECK THAT VARIABLES EXIST
@@ -247,6 +342,13 @@ print(summary(med.int))
 ############################
 
 all_checks <- list(
+  manuscript_context = list(
+    eeg_time_points = c(1L, 3L),
+    selected_motor_items = selected_motor_items,
+    final_reported_model = "interaction-adjusted mediation model"
+  ),
+  resCCA = resCCA,
+  cca = list(fit = cca.out, wx1 = wx1, wy1 = wy1),
   fit.m = fit.m,
   fit.o = fit.o,
   fit.o.quad = fit.o.quad,
@@ -263,4 +365,4 @@ all_checks <- list(
   med.int = med.int
 )
 
-saveRDS(all_checks, "mediation_diagnostics_resCCA.rds")
+saveRDS(all_checks, file.path(root_dir, "mediation_diagnostics_resCCA.rds"))
