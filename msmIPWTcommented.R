@@ -1,11 +1,31 @@
 # Author: Fuleah A. Razzaq
 # Modified by Carlos Lopez
+
+get_script_path <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- "--file="
+  matches <- grep(file_arg, args, value = TRUE)
+
+  if (length(matches) == 0) {
+    stop("Could not determine script path from commandArgs().")
+  }
+
+  normalizePath(sub(file_arg, "", matches[1]), winslash = "/", mustWork = TRUE)
+}
+
+script_path <- get_script_path()
+root_dir <- dirname(script_path)
+
+.libPaths(c(file.path(root_dir, "Rlibs"), .libPaths()))
+
 library(tidyverse) # Load necessary libraries
 library(readr)
 library(dplyr)
 
-rm(list = ls(all.names = TRUE)) # Clear memory
-load("tidyEPOdata.Rdata") # Load dataset
+# Load datasets (Methods: "Data Acquisition")
+# load(file.path(root_dir, "outCloud/newData/tidyEPOdataOn.Rdata")) # Load EPO dataset
+load(file.path(root_dir, "tidyEPOdata.Rdata")) # Load dataset
+
 
 # Rename variables while keeping original read names intact
 colnames(subTB)[7] = "side" # Side of symptom onset (Methods: "Confounder variables")
@@ -23,10 +43,22 @@ data<-cognitionTB %>%
   inner_join(motorTB, by = c('ID','time'))
 data=data[data$time %in% c(1,2,3),]
 
-Y=as.matrix(subset(data,select=(speech:dyskinesia))) # UPDRS-III motor outcome variables (Methods: "Motor assessment")
+motor_item_names <- names(motorTB)[match("speech", names(motorTB)):match("dyskinesia", names(motorTB))]
+Y=as.matrix(data[, motor_item_names]) # 33 OFF-state MDS-UPDRS Part III motor items (Methods: "Motor assessment")
 
 library(psych)
-my_fa <- fa(r = Y, nfactors = 3)
+my_fa <- psych::fa(
+  Y,
+  nfactors = 3,
+  fm = "minres",
+  rotate = "oblimin",
+  scores = "regression"
+)
+
+if (is.null(my_fa$scores) || nrow(my_fa$scores) != nrow(data)) {
+  stop("psych::fa did not return factor scores for all longitudinal rows.")
+}
+
 resY=my_fa$scores # Factor analysis to extract latent motor variable (Methods: "Exploring evidence for a causal effect")
 
 ####### Combine data #####
