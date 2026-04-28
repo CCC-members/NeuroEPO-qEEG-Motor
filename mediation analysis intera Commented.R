@@ -3,10 +3,10 @@
 # =============================================================================
 # Purpose:
 #   Estimate the causal mediation effect of qEEG (KqEEG) on the latent motor
-#   outcome (Kmotor) through NeuroEPO treatment, incorporating a
-#   treatment-by-mediator interaction term (KqEEG * Dose) in the outcome model.
+#   outcome (Kmotor) through NeuroEPO randomized group, incorporating a
+#   NeuroEPO-group-by-mediator interaction term (KqEEG * group_neuroepo) in the outcome model.
 #   This extends the base mediation model to allow the effect of KqEEG on
-#   Kmotor to vary by treatment arm, in line with reviewer suggestions and
+#   Kmotor to vary by randomized group, in line with reviewer suggestions and
 #   manuscript reporting (Methods: "Statistical Analysis").
 #
 # Inputs:
@@ -102,6 +102,20 @@ if (!"side" %in% names(subTB) && ncol(subTB) >= 7) {
   colnames(subTB)[7] <- "side"
 }
 
+# Derive randomized group assignment from the active-treatment visit.
+# The legacy source field is converted once per participant at load time.
+group_lookup <- subTimeTB %>%
+  filter(time == 2, !is.na(Dose)) %>%
+  transmute(
+    ID,
+    group = factor(
+      if_else(Dose > 0, "NeuroEPO", "Placebo"),
+      levels = c("Placebo", "NeuroEPO")
+    ),
+    group_neuroepo = as.integer(group == "NeuroEPO")
+  ) %>%
+  distinct(ID, .keep_all = TRUE)
+
 # ---------------------------------------------------------------------------
 # Motor items used as the Y block in sparse CCA.
 # These 18 MDS-UPDRS Part III items were selected via factor-analytic
@@ -177,41 +191,44 @@ resCCA <- data.frame(
   Kmotor = as.vector(scale(Y, center = TRUE, scale = FALSE) %*% wy1)
 )
 
-# Append subject-level covariates (group, Dose) and visit-level covariates
+# Append subject-level covariates, randomized group, and visit-level covariates
 # (progression, handness, side, severity, age) from the EPO data tables
 # (Methods: "Confounder variables").
 resCCA <- subTB %>% inner_join(resCCA, by = "ID")
+resCCA <- group_lookup %>% inner_join(resCCA, by = "ID")
 resCCA <- subTimeTB %>% inner_join(resCCA, by = c("ID", "time"))
 
 # Retain only complete cases on all analysis variables and cast grouping
 # variables to factors for correct treatment in the mixed-effects models.
 resCCA <- resCCA %>%
-  filter(complete.cases(ID, time, KqEEG, Kmotor, Dose, progression, handness, side, severity, age)) %>%
+  filter(complete.cases(ID, time, KqEEG, Kmotor, group_neuroepo, progression, handness, side, severity, age)) %>%
   mutate(
     ID = factor(ID),      # Random effect grouping variable (participant ID)
     side = factor(side),  # Side of motor symptom onset
-    handness = factor(handness) # Handedness
+    handness = factor(handness), # Handedness
+    group = factor(group, levels = c("Placebo", "NeuroEPO")),
+    group_neuroepo = as.integer(group_neuroepo)
   )
 
 # ---------------------------------------------------------------------------
-# Causal mediation model with treatment-by-mediator interaction
+# Causal mediation model with randomized-group-by-mediator interaction
 # (Methods: "Statistical Analysis", "Mediation Analysis")
 #
 # Mediator model (M-model):
-#   KqEEG ~ Dose + covariates + (1 | ID)
+#   KqEEG ~ group_neuroepo + covariates + (1 | ID)
 #   -- Tests whether NeuroEPO shifts the qEEG mediator relative to placebo.
 #
 # Outcome model (O-model) -- interaction-adjusted:
-#   Kmotor ~ KqEEG * Dose + covariates + (1 | ID)
-#   -- The KqEEG:Dose interaction allows the qEEG-to-motor path to differ
+#   Kmotor ~ KqEEG * group_neuroepo + covariates + (1 | ID)
+#   -- The KqEEG:group_neuroepo interaction allows the qEEG-to-motor path to differ
 #      between NeuroEPO and placebo arms, relaxing the no-interaction
 #      assumption of the standard Baron-Kenny framework.
 #   -- Under this model, mediation::mediate() returns
 #      ACME (average causal mediation effect) and ADE (average direct effect)
-#      integrated over the observed Dose distribution.
+#      integrated over the observed randomized group distribution.
 # ---------------------------------------------------------------------------
-model.m.lmer <- as.formula("KqEEG ~ 1 + Dose + progression + handness + side + severity + age + (1 | ID)")
-model.o.lmer <- as.formula("Kmotor ~ 1 + KqEEG * Dose + progression + handness + side + severity + age + (1 | ID)")
+model.m.lmer <- as.formula("KqEEG ~ 1 + group_neuroepo + progression + handness + side + severity + age + (1 | ID)")
+model.o.lmer <- as.formula("Kmotor ~ 1 + KqEEG * group_neuroepo + progression + handness + side + severity + age + (1 | ID)")
 
 # Fit both mixed-effects models using ML (REML = FALSE) for likelihood-based
 # comparison and compatibility with mediation::mediate().
@@ -223,7 +240,7 @@ fit.o <- lme4::lmer(model.o.lmer, data = resCCA, REML = FALSE)
 results <- mediation::mediate(
   fit.m,
   fit.o,
-  treat = "Dose",
+  treat = "group_neuroepo",
   mediator = "KqEEG",
   sims = 5000,
   na.action = "na.omit"
@@ -231,7 +248,7 @@ results <- mediation::mediate(
 
 summary(results)        # ACME, ADE, total effect and proportion mediated
 print(summary(fit.m))  # Mediator model coefficient table
-print(summary(fit.o))  # Outcome model coefficient table (including KqEEG:Dose)
+print(summary(fit.o))  # Outcome model coefficient table (including KqEEG:group_neuroepo)
 
 # ---------------------------------------------------------------------------
 # Export results
@@ -251,7 +268,7 @@ saveRDS(
     wx1 = wx1,          # First CCA X-canonical weight vector (qEEG)
     wy1 = wy1,          # First CCA Y-canonical weight vector (motor)
     fit.m = fit.m,      # Fitted mediator model
-    fit.o = fit.o,      # Fitted outcome model (with KqEEG:Dose interaction)
+    fit.o = fit.o,      # Fitted outcome model (with KqEEG:group_neuroepo interaction)
     mediation = results, # mediation::mediate() output (ACME, ADE, total effect)
     resCCA = resCCA     # Analysis data frame (canonical scores + covariates)
   ),

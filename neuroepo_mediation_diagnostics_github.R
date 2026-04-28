@@ -82,6 +82,20 @@ if (!"side" %in% names(subTB) && ncol(subTB) >= 7) {
   colnames(subTB)[7] <- "side"
 }
 
+# Derive randomized group assignment from the active-treatment visit.
+# The legacy source field is converted once per participant at load time.
+group_lookup <- subTimeTB %>%
+  filter(time == 2, !is.na(Dose)) %>%
+  transmute(
+    ID,
+    group = factor(
+      if_else(Dose > 0, "NeuroEPO", "Placebo"),
+      levels = c("Placebo", "NeuroEPO")
+    ),
+    group_neuroepo = as.integer(group == "NeuroEPO")
+  ) %>%
+  distinct(ID, .keep_all = TRUE)
+
 selected_motor_items <- c(
   "speech",
   "facialExp",
@@ -130,13 +144,17 @@ resCCA <- data.frame(
 
 resCCA <- subTB %>%
   inner_join(resCCA, by = "ID")
+resCCA <- group_lookup %>%
+  inner_join(resCCA, by = "ID")
 resCCA <- subTimeTB %>%
   inner_join(resCCA, by = c("ID", "time")) %>%
-  filter(complete.cases(ID, time, KqEEG, Kmotor, Dose, progression, handness, side, severity, age)) %>%
+  filter(complete.cases(ID, time, KqEEG, Kmotor, group_neuroepo, progression, handness, side, severity, age)) %>%
   mutate(
     ID = factor(ID),
     side = factor(side),
-    handness = factor(handness)
+    handness = factor(handness),
+    group = factor(group, levels = c("Placebo", "NeuroEPO")),
+    group_neuroepo = as.integer(group_neuroepo)
   )
 
 ############################
@@ -144,7 +162,7 @@ resCCA <- subTimeTB %>%
 ############################
 
 print(names(resCCA))
-vars_needed <- c("KqEEG", "Kmotor", "Dose", "progression", "handness", "side", "severity", "age", "ID")
+vars_needed <- c("KqEEG", "Kmotor", "group", "group_neuroepo", "progression", "handness", "side", "severity", "age", "ID")
 print(vars_needed %in% names(resCCA))
 
 ############################
@@ -152,13 +170,13 @@ print(vars_needed %in% names(resCCA))
 ############################
 
 fit.m <- lme4::lmer(
-  KqEEG ~ 1 + Dose + progression + handness + side + severity + age + (1 | ID),
+  KqEEG ~ 1 + group_neuroepo + progression + handness + side + severity + age + (1 | ID),
   data = resCCA,
   REML = FALSE
 )
 
 fit.o <- lme4::lmer(
-  Kmotor ~ 1 + KqEEG + Dose + progression + handness + side + severity + age + (1 | ID),
+  Kmotor ~ 1 + KqEEG + group_neuroepo + progression + handness + side + severity + age + (1 | ID),
   data = resCCA,
   REML = FALSE
 )
@@ -222,7 +240,7 @@ print(check_collinearity(fit.o))
 ############################
 
 fit.o.quad <- lme4::lmer(
-  Kmotor ~ 1 + KqEEG + I(KqEEG^2) + Dose + progression + handness + side + severity + age + (1 | ID),
+  Kmotor ~ 1 + KqEEG + I(KqEEG^2) + group_neuroepo + progression + handness + side + severity + age + (1 | ID),
   data = resCCA,
   REML = FALSE
 )
@@ -236,7 +254,7 @@ print(anova(fit.o, fit.o.quad))
 ############################
 
 fit.o.spline <- lme4::lmer(
-  Kmotor ~ 1 + ns(KqEEG, df = 3) + Dose + progression + handness + side + severity + age + (1 | ID),
+  Kmotor ~ 1 + ns(KqEEG, df = 3) + group_neuroepo + progression + handness + side + severity + age + (1 | ID),
   data = resCCA,
   REML = FALSE
 )
@@ -246,11 +264,11 @@ print(summary(fit.o.spline))
 print(anova(fit.o, fit.o.spline))
 
 ############################
-# 10) TREATMENT-MEDIATOR INTERACTION CHECK
+# 10) RANDOMIZED-GROUP-MEDIATOR INTERACTION CHECK
 ############################
 
 fit.o.int <- lme4::lmer(
-  Kmotor ~ 1 + KqEEG * Dose + progression + handness + side + severity + age + (1 | ID),
+  Kmotor ~ 1 + KqEEG * group_neuroepo + progression + handness + side + severity + age + (1 | ID),
   data = resCCA,
   REML = FALSE
 )
@@ -301,7 +319,7 @@ set.seed(123)
 med.qb <- mediate(
   model.m = fit.m,
   model.y = fit.o,
-  treat = "Dose",
+  treat = "group_neuroepo",
   mediator = "KqEEG",
   sims = 5000
 )
@@ -329,7 +347,7 @@ set.seed(123)
 med.int <- mediate(
   model.m = fit.m,
   model.y = fit.o.int,
-  treat = "Dose",
+  treat = "group_neuroepo",
   mediator = "KqEEG",
   sims = 5000
 )

@@ -64,15 +64,21 @@ load(file.path(root_dir, "tidyEPOdata.Rdata")) # Load dataset
 colnames(subTB)[7] = "side" # Side of symptom onset (Methods: "Confounder variables")
 
 # ---------------------------------------------------------------------------
-# Derive treatment group assignment from the second visit (time = 2).
-# Dose == 0 -> Placebo; Dose == 5 -> NeuroEPO
+# Derive randomized group assignment from the active-treatment visit.
+# The legacy source field is converted once per participant at load time.
 # (Methods: "Participants")
 # ---------------------------------------------------------------------------
-subgr=subTimeTB
-subgr$group=NA
-subgr$group[subgr$time==2 & subgr$Dose==0]="Placebo" # Treatment variable (Methods: "Participants")
-subgr$group[subgr$time==2 & subgr$Dose==5]="NeuroEPO"
-subgr<-na.omit(subgr)%>%dplyr::select(ID,group)
+subgr <- subTimeTB %>%
+  filter(time == 2, !is.na(Dose)) %>%
+  transmute(
+    ID,
+    group = factor(
+      if_else(Dose > 0, "NeuroEPO", "Placebo"),
+      levels = c("Placebo", "NeuroEPO")
+    ),
+    group_neuroepo = as.integer(group == "NeuroEPO")
+  ) %>%
+  distinct(ID, .keep_all = TRUE)
 subTB<-subgr %>%  
   inner_join(subTB, by = ('ID'))
 
@@ -121,34 +127,33 @@ resCCA=data.frame(ID=data$ID,time=data$time,resY) # resY columns: MR1 (Lambda_mo
 
 #### Covariates ####
 resCCA<-subTB %>%  
-  inner_join(resCCA, by = ('ID'))   # Append subject-level variables (group, Dose)
+  inner_join(resCCA, by = ('ID'))   # Append subject-level variables, including randomized group
 resCCA<-subTimeTB %>%  
   inner_join(resCCA, by = c('ID','time')) # Append visit-level variables (age, severity, progression)
 
-# Encode treatment as a binary integer (0 = placebo, 1 = NeuroEPO)
-# required by ipwtm() (Methods: "Marginal Structural Models").
-resCCA$Doseind=0
-resCCA$Doseind[resCCA$Dose>0]=1
-resCCA$Doseind=as.integer(resCCA$Doseind) # Binary treatment indicator (Methods: "Statistical Analysis")
+# Encode randomized group as a binary model indicator:
+# 0 = placebo group, 1 = NeuroEPO group.
+resCCA$group <- factor(resCCA$group, levels = c("Placebo", "NeuroEPO"))
+resCCA$group_neuroepo <- as.integer(resCCA$group_neuroepo)
 resCCA$severity=as.integer(resCCA$severity)   # Disease severity at baseline (Methods: "Confounder variables")
 resCCA$handeness=as.factor(resCCA$handness)   # Handedness as factor (Methods: "Confounder variables")
 resCCA$side=as.factor(resCCA$side)             # Side of symptom onset as factor (Methods: "Confounder variables")
 resCCA$days=resCCA$age-resCCA$initage         # Derived: years from symptom onset to study entry
 
 # ---------------------------------------------------------------------------
-# Build lagged treatment and outcome history variables required by the MSM.
-# For each participant, prevX records the treatment received at the previous
+# Build lagged randomized-group and outcome history variables required by the MSM.
+# For each participant, prevX records the group indicator at the previous
 # visit, and prevY / prevY2 / prevY3 record the baseline latent factor scores.
 # These are used in both the IPTW numerator/denominator models and as
 # time-varying confounders in the MSM (Methods: "Marginal Structural Models").
 # ---------------------------------------------------------------------------
-# Define previous treatment and motor assessments (Methods: "Marginal Structural Models")
+# Define previous group indicator and motor assessments (Methods: "Marginal Structural Models")
 resCCA$prevX=0
 resCCA$prevY=resCCA$prevY2=resCCA$prevY3=NA
 for (id in 1:26 )
 {
-  # prevX: treatment indicator at the preceding visit (used in IPTW denominator)
-  resCCA$prevX[resCCA$ID==id & resCCA$time %in% c(3,4)]=resCCA$Doseind[resCCA$ID==id & resCCA$time==2]
+  # prevX: randomized group indicator at the preceding visit (used in IPTW denominator)
+  resCCA$prevX[resCCA$ID==id & resCCA$time %in% c(3,4)]=resCCA$group_neuroepo[resCCA$ID==id & resCCA$time==2]
   # prevY / prevY2 / prevY3: baseline factor scores used as time-stable confounders
   resCCA$prevY[resCCA$ID==id & resCCA$time %in% c(1,2,3,4)]=resCCA$MR1[resCCA$ID==id & resCCA$time==1]# MR1 represents the motor latent variable derived from UPDRS-III (Methods: "Exploring evidence for a causal effect of NeuroEPO on the motor outcome")
   resCCA$prevY2[resCCA$ID==id & resCCA$time %in% c(1,2,3,4)]=resCCA$MR2[resCCA$ID==id & resCCA$time==1]
@@ -163,13 +168,13 @@ library(EValue) # evalues.OLS(): E-value for sensitivity analysis
 
 # ---------------------------------------------------------------------------
 # IPTW computation
-# Stabilised IPTW weights are computed using a logistic model for treatment
+# Stabilised IPTW weights are computed using a logistic model for randomized group
 # assignment. The denominator model adjusts for all baseline and time-varying
-# confounders; the numerator model adjusts for treatment history only
+# confounders; the numerator model adjusts for group history only
 # (Methods: "Marginal Structural Models").
 # ---------------------------------------------------------------------------
 # Compute inverse probability weights for MSM (Methods: "Marginal Structural Models")
-siptw <- ipwtm(exposure = Doseind,timevar=time,
+siptw <- ipwtm(exposure = group_neuroepo,timevar=time,
                family = "binomial",  link="logit",
                numerator= ~1 + prevX,
                denominator =  ~  prevX +prevY+progression+age+severity+handeness+side, # Adjusted confounders (Methods: "Confounder variables")
@@ -186,7 +191,7 @@ dataCausal$siptw <- siptw$ipw.weights
 # distribution of time-varying confounders (Methods: "Statistical Analysis").
 # ---------------------------------------------------------------------------
 # MSM estimation using linear mixed models (Methods: "Statistical Analysis")
-msm=nlme::lme(Lamda_motor~Doseind, data=dataCausal, 
+msm=nlme::lme(Lamda_motor~group_neuroepo, data=dataCausal,
               weights =~siptw,    # Incorporate stabilised IPTW weights
               random=~1|ID)       # Random intercept per participant
 summary(msm)
@@ -199,8 +204,8 @@ s=summary(msm)
 # observed ATE (Methods: "Sensitivity Analysis").
 # ---------------------------------------------------------------------------
 # Sensitivity analysis for unmeasured confounders (Methods: "Sensitivity Analysis")
-beta_lme = s$tTable["Doseind", "Value"]    # Estimated ATE
-se_lme = s$tTable["Doseind", "Std.Error"]  # Standard error of ATE
+beta_lme = s$tTable["group_neuroepo", "Value"]    # Estimated ATE
+se_lme = s$tTable["group_neuroepo", "Std.Error"]  # Standard error of ATE
 sd_lme = s$sigma                            # Residual SD of the MSM
 
 e_lme = evalues.OLS(est = beta_lme, 
@@ -223,7 +228,7 @@ msm_bootstrap <- function(data, indices) {
   data_boot <- data[indices, ]  # Resample data (rows sampled with replacement)
   
   # Compute IPTW weights on the resampled data
-  siptw <- ipwtm(exposure = Doseind, timevar = time,
+  siptw <- ipwtm(exposure = group_neuroepo, timevar = time,
                  family = "binomial", link = "logit",
                  numerator = ~1 + prevX,
                  denominator = ~prevX + prevY + progression + age + severity + handness + side,
@@ -232,10 +237,10 @@ msm_bootstrap <- function(data, indices) {
   data_boot$siptw <- siptw$ipw.weights
   
   # Fit weighted MSM on the bootstrap sample
-  msm_model <- nlme::lme(Lamda_motor ~ Doseind, data = data_boot, 
+  msm_model <- nlme::lme(Lamda_motor ~ group_neuroepo, data = data_boot,
                          weights = ~siptw, random = ~1 | ID)
   
-  return(fixef(msm_model)["Doseind"]) # Return bootstrap ATE estimate
+  return(fixef(msm_model)["group_neuroepo"]) # Return bootstrap ATE estimate
 }
 
 # Run bootstrap with 1000 iterations for a stable percentile and BCa CI

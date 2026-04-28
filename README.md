@@ -18,7 +18,7 @@ This repository contains MATLAB and R scripts for the secondary analysis of a **
 | Script | Purpose |
 |---|---|
 | `msmIPWTcommented_github.R` | **MSM/IPTW causal analysis.** Extracts latent motor variable (λ_motor) via 3-factor oblimin FA on 33 OFF-state MDS-UPDRS Part III items; computes stabilized IPTW weights; fits weighted linear mixed-effects MSM; reports ATE, E-value, and 1000-replicate bootstrap BCa CI. |
-| `mediation analysis intera Commented.R` | **Causal mediation analysis (interaction-adjusted).** Runs sCCA to derive κ_qEEG and κ_motor; fits mediator model (κ_qEEG ~ Dose + covariates) and interaction-adjusted outcome model (κ_motor ~ κ_qEEG × Dose + covariates); estimates ACME, ADE, and proportion mediated via 5000 Monte Carlo simulations. |
+| `mediation analysis intera Commented.R` | **Causal mediation analysis (interaction-adjusted).** Runs sCCA to derive κ_qEEG and κ_motor; fits mediator model (κ_qEEG ~ group_neuroepo + covariates) and interaction-adjusted outcome model (κ_motor ~ κ_qEEG × group_neuroepo + covariates); estimates ACME, ADE, and proportion mediated via 5000 Monte Carlo simulations. |
 | `ExportLocfdrCcaWeights.R` | **CCA weight thresholding.** Applies local false discovery rate (locfdr) to the raw CCA X-block weight vector; exports significant weights, FDR values, and mask to `.mat` for NIfTI generation. |
 | `reviewer_delta_lambda_vs_updrs_analysis.R` | **Reviewer validation.** Computes participant-level Δλ_motor (T4−T1) vs. ΔUPDRS-III OFF total (T4−T1); reports Pearson r with 95% CI and Spearman ρ with bootstrap 95% CI; generates scatter plots with regression CI band, colored by treatment group. |
 | `neuroepo_mediation_diagnostics_github.R` | **Mediation diagnostics.** Self-contained; rebuilds the sCCA pipeline from `.Rdata` files; runs influence analysis, robust SEs, and DHARMa residual checks. |
@@ -49,7 +49,7 @@ Bootstrap validation (1000 replicates, BCa method): **95% CI −0.91 to −0.12*
 
 ### EEG as a Causal Mediator (Interaction-Adjusted Mediation)
 
-The interaction-adjusted mediation model (κ_qEEG × Dose term in outcome model) yielded:
+The interaction-adjusted mediation model (κ_qEEG × randomized group term in outcome model) yielded:
 
 | Parameter | Estimate | p-value |
 |---|---|---|
@@ -78,7 +78,7 @@ The top MDS-UPDRS Part III items loaded on the first sCCA motor canonical variat
 | Latent motor variable (λ_motor) | `Lamda_motor` / `MR1` | First factor from 3-factor oblimin FA on 33 OFF-state MDS-UPDRS Part III items. Higher = worse motor function. |
 | EEG latent variable (κ_qEEG) | `KqEEG` | First sCCA canonical variate from qEEG source spectra; the mediator. |
 | Motor canonical variate (κ_motor) | `Kmotor` | First sCCA canonical variate from screened motor items; the outcome in mediation. |
-| Treatment group | `Doseind` | Binary: 0 = Placebo, 1 = NeuroEPO. Continuous dose `Dose` also used in mediation models. |
+| Group | `group`; model indicator: `group_neuroepo` | Randomized study group. `group` is coded as Placebo or NeuroEPO; `group_neuroepo` is coded 0 = Placebo and 1 = NeuroEPO for causal and mediation models. |
 | Average Treatment Effect | `beta_lme` (MSM) | Estimated by weighted LME; negative = motor improvement. |
 | ACME | `results$d.avg` | Average Causal Mediation Effect from `mediation::mediate()`. |
 | ADE | `results$z.avg` | Average Direct Effect from `mediation::mediate()`. |
@@ -91,6 +91,8 @@ The top MDS-UPDRS Part III items loaded on the first sCCA motor canonical variat
 | Additional confounders | `progression`, `age` | Time-varying covariates in IPTW denominator model. |
 | EEG source spectra | `EEG.X1:EEG.X158956` | 3244 voxels × 49 frequency bins (0.78–19.1 Hz, Δf = 0.39 Hz) from VARETA inverse solution. |
 | locfdr significant mask | `wx_sig_mask` | Binary; 1 where local FDR < threshold for CCA weight. |
+
+The exposure variable was the randomized group, coded as placebo group = 0 and NeuroEPO group = 1 for causal and mediation models.
 
 ---
 
@@ -140,7 +142,7 @@ Rscript msmIPWTcommented_github.R
 ```
 Outputs ATE (−0.49, p = 0.014), bootstrap BCa CI, and E-value (3.47) to console.
 
-### Step 2 — Causal Mediation Analysis (with Treatment × Mediator Interaction)
+### Step 2 — Causal Mediation Analysis (with Group × Mediator Interaction)
 ```r
 # Estimate ACME, ADE, and proportion mediated by κ_qEEG
 Rscript "mediation analysis intera Commented.R"
